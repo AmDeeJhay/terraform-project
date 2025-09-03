@@ -1,0 +1,57 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  backend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm run build
+
+      #Run Jest tests
+      - name: Run Backend Tests
+        run: npm test
+
+      - name: Upload lambda artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lambda-zip
+          path: backend/lambda.zip
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm run build
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Terraform fmt & validate
+        run: |
+          cd infra
+          terraform --version
+          terraform init -input=false
+          terraform fmt -check
+          terraform validate
+      - name: Trigger Terraform Cloud run (manual step recommended)
+        run: echo "Connect Terraform Cloud workspace to repo for auto-runs"
